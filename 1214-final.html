@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Five in a Row - Thinking is the New Battle</title>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ====== 通用設定 ====== */
+  body {
+    margin: 0;
+    overflow-y: auto; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    background: radial-gradient(circle at center, #1b1b25 0%, #000 100%);
+    font-family: "Orbitron", sans-serif;
+    color: #0ff;
+    user-select: none;
+  }
+
+  /* ====== 按鈕樣式 ====== */
+  .menu-btn, .btn, .skill-btn { 
+    font-family: "Orbitron", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: transparent;
+    border: 2px solid #0ff;
+    color: #0ff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+  
+  .skill-btn.active {
+    background: #0ff;
+    color: #1b1b25;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+    transform: scale(1.05);
+  }
+  
+  /* 禁用狀態樣式 */
+  .skill-btn:disabled, .btn:disabled {
+      border-color: #444;
+      color: #666;
+      cursor: not-allowed;
+      box-shadow: none;
+      background: rgba(0,0,0,0.5);
+  }
+
+  /* 特別強調悔棋按鈕 */
+  #retract-btn:not(:disabled) {
+      border-color: #ffaa00;
+      color: #ffaa00;
+      box-shadow: 0 0 15px rgba(255, 170, 0, 0.4);
+  }
+  #retract-btn:not(:disabled):hover {
+      background: rgba(255, 170, 0, 0.1);
+      box-shadow: 0 0 25px rgba(255, 170, 0, 0.6);
+  }
+
+  /* ====== 選單樣式 ====== */
+  #mainMenu, #settingsMenu, #onlineMenu {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 20px 0; 
+  }
+  
+  .title {
+    font-size: 55px;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    background: linear-gradient(to bottom, #fff, #0ff);
+    -webkit-background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 8px #0ff;
+  }
+  
+  .subtitle {
+    font-size: 20px;
+    color: #88ffff;
+    letter-spacing: 4px;
+    margin-top: 5px;
+    margin-bottom: 40px;
+    opacity: 0.8;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px #0ff;
+  }
+
+  .menu-btn {
+    width: 350px;
+    padding: 15px 30px;
+    margin: 10px;
+    font-size: 18px;
+  }
+  
+  .menu-btn:hover {
+    background: rgba(0,255,255,0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+  }
+
+  /* === 連線選單 === */
+  .online-group {
+      width: 90%;
+      max-width: 500px;
+      background: rgba(0,0,0,0.6);
+      padding: 30px;
+      border: 1px solid #0ff;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 0 20px rgba(0,255,255,0.2);
+  }
+  .id-display {
+      font-size: 24px;
+      color: #ff00ff;
+      background: #000;
+      padding: 10px;
+      border: 1px dashed #ff00ff;
+      margin: 10px 0;
+      user-select: text; 
+      word-break: break-all;
+  }
+  .input-field {
+      background: #000;
+      border: 1px solid #0ff;
+      color: #fff;
+      padding: 10px;
+      font-family: "Orbitron", sans-serif;
+      font-size: 18px;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
+  }
+
+  /* === 設定頁面 === */
+  .setting-group {
+    width: 90%;
+    max-width: 500px;
+    margin: 30px auto;
+    padding: 20px;
+    border: 1px solid #0ff;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 16px;
+    color: #fff;
+    border-bottom: 1px dashed rgba(0, 255, 255, 0.3);
+    padding-bottom: 10px;
+    padding-top: 5px;
+  }
+  .setting-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  
+  /* 音樂選單樣式 */
+  .music-select {
+      background: #000;
+      color: #0ff;
+      border: 1px solid #0ff;
+      padding: 8px 10px;
+      font-family: "Orbitron", sans-serif;
+      font-size: 14px;
+      width: 100%;
+      max-width: 300px;
+      border-radius: 4px;
+      margin-top: 8px;
+      cursor: pointer;
+  }
+  .music-select:focus {
+      outline: none;
+      box-shadow: 0 0 10px #0ff;
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+    margin-left: 10px;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border: 2px solid #0ff;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 5px;
+    background-color: #0ff;
+    transition: .4s;
+  }
+  input:checked + .slider { background-color: #0ff; }
+  input:checked + .slider:before { transform: translateX(26px); background-color: #000; }
+  .slider.round { border-radius: 34px; }
+  .slider.round:before { border-radius: 50%; }
+
+  #boardSizeSlider, #roundsToWinSlider { 
+    -webkit-appearance: none;
+    appearance: none;
+    width: 50%;
+    height: 8px;
+    background: #555;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+    border-radius: 4px;
+    margin-left: 10px;
+  }
+  #boardSizeSlider::-webkit-slider-thumb, #roundsToWinSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0ff;
+    cursor: pointer;
+    box-shadow: 0 0 5px #0ff;
+  }
+  #boardSizeValue, #roundsToWinValue { min-width: 65px; text-align: right; }
+  
+  /* ====== 遊戲主畫面 ====== */
+  #gameArea {
+    display: none; 
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px; 
+    box-sizing: border-box; 
+    position: relative; 
+  }
+  
+  #backBtn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 50;
+    width: 120px;
+    padding: 10px;
+    margin: 0;
+    font-size: 16px;
+  }
+  
+  .top-info-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+    padding-top: 50px; 
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 20px;
+    background: rgba(20, 30, 40, 0.8);
+    padding: 10px 30px;
+    border: 1px solid #0ff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  }
+  .score-item { text-align: center; }
+  .score-label {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 4px;
+  }
+  .score-val {
+    font-size: 28px;
+    font-weight: bold;
+  }
+  .p1-color { color: #0ff; text-shadow: 0 0 8px #0ff; }
+  .p2-color { color: #fff; text-shadow: 0 0 8px #fff; }
+
+  .current-turn {
+    font-size: 20px;
+    margin-bottom: 10px;
+    padding: 10px 20px;
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .current-turn span {
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+    transition: color 0.3s, text-shadow 0.3s;
+  }
+  .online-status {
+      font-size: 14px;
+      color: #00ff00;
+      margin-top: 5px;
+      text-shadow: 0 0 5px #00ff00;
+  }
+  
+  #gameGrid {
+    display: grid;
+    grid-template-columns: minmax(180px, 280px) 1fr minmax(180px, 280px); 
+    gap: 30px;
+    width: 95%;
+    max-width: 1500px; 
+    align-items: start; 
+    justify-content: center;
+  }
+
+  #board {
+    background: rgba(20, 20, 30, 0.85);
+    border: 2px solid #0ff;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+    cursor: pointer;
+    border-radius: 4px;
+    justify-self: center; 
+    align-self: center;
+    max-width: 100%;
+    height: auto;
+    grid-column: 2 / 3;
+  }
+  
+  #generalControls {
+      grid-column: 1 / 2;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 15px;
+      border: 1px solid rgba(0, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+  }
+
+  #skillControlsWrapper {
+      grid-column: 3 / 4;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 15px;
+      border: 1px solid rgba(0, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+  }
+
+  .btn {
+    font-size: 16px;
+    padding: 10px;
+    width: 100%;
+  }
+  .btn:hover {
+    background: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+    transform: scale(1.02); 
+  }
+  .btn:active { transform: scale(0.98); }
+
+  #skillControls {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    width: 100%;
+  }
+  #skillControls h4 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 18px;
+    text-align: center;
+    transition: color 0.3s;
+  }
+  .skill-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .skill-btn {
+    font-size: 14px;
+    padding: 8px;
+    flex-grow: 1; 
+    min-width: 60px;
+    transition: all 0.2s ease, background 0.1s ease;
+  }
+
+  #skillMessage {
+    color: #ff00ff;
+    font-weight: bold;
+    margin-bottom: 10px;
+    min-height: 20px;
+    text-align: center;
+  }
+
+  @media (max-width: 1024px) {
+    #gameArea { padding-top: 0; }
+    .top-info-wrapper { padding-top: 60px; }
+    #gameGrid { grid-template-columns: 1fr; gap: 20px; width: 100%; }
+    #board { order: 1; grid-column: auto; max-width: 95%; }
+    #generalControls {
+        order: 2; grid-column: auto; width: 95%; max-width: 600px; align-self: center;
+        flex-direction: row; justify-content: space-around; gap: 10px; padding: 15px;
+    }
+    .btn { width: auto; flex-grow: 1; min-width: 80px; }
+    #skillControlsWrapper { order: 3; grid-column: auto; width: 95%; max-width: 600px; align-self: center; }
+    .skill-buttons { gap: 8px; }
+    #backBtn { top: 10px; left: 10px; }
+  }
+
+  #winner-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 15, 30, 0.95);
+    padding: 30px 50px;
+    border: 2px solid #0ff;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+    font-size: 32px;
+    color: #0ff;
+    display: none;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* === Effect Overlay === */
+  #actionEffect {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    font-size: 40px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px currentColor;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 150;
+    text-transform: uppercase;
+    text-align: center;
+    background: rgba(0,0,0,0.6);
+    padding: 20px 40px;
+    border: 2px solid currentColor;
+    border-radius: 10px;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  #actionEffect.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  #confirmModal, #alertModal { 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+  }
+
+  .modal-content {
+    background: #1b1b25;
+    padding: 30px;
+    border: 2px solid #0ff;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+    text-align: center;
+    width: 80%;
+    max-width: 400px;
+    box-sizing: border-box;
+  }
+
+  .modal-content h3 {
+    margin-top: 0;
+    color: #0ff;
+    font-size: 24px;
+  }
+
+  .modal-content p {
+    color: #ccc;
+    margin-bottom: 25px;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap; 
+  }
+
+  .modal-actions button {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 16px;
+    min-width: 100px;
+    width: auto; 
+    flex-grow: 1;
+  }
+  
+</style>
+</head>
+<body>
+
+<audio id="bgm" loop>
+  <source src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/KieLoKaz/Free_Ganymed/KieLoKaz_-_01_-_Reunion_of_the_Spaceducks_Kielokaz_ID_365.mp3" type="audio/mpeg">
+</audio>
+
+<div id="mainMenu">
+  <div class="title">Five in a Row</div>
+  <div class="subtitle">Thinking is the new battle</div>
+  <button class="menu-btn" onclick="startLocalGame()">Local PvP (本機對戰)</button>
+  <button class="menu-btn" onclick="startAiGame()">PvE (人機對戰)</button>
+  <button class="menu-btn" onclick="openOnlineMenu()">Online PvP (線上連線)</button>
+  <button class="menu-btn" onclick="settings()">Game Settings</button>
+</div>
+
+<div id="onlineMenu" style="display: none;">
+    <div class="title">Online Battle</div>
+    <div class="subtitle">Connect via Peer ID</div>
+
+    <div id="onlineChoice" class="online-group">
+        <button class="menu-btn" style="width:100%" onclick="setupHost()">Create Game (Host)</button>
+        <button class="menu-btn" style="width:100%" onclick="setupJoin()">Join Game (Client)</button>
+    </div>
+
+    <div id="onlineHost" class="online-group" style="display:none;">
+        <p>Send this ID to your friend:</p>
+        <div class="id-display" id="myIdDisplay">Generating...</div>
+        <p style="color:#aaa; font-size:14px;">Waiting for connection...</p>
+        <button class="btn" onclick="backToOnlineMenu()">Cancel</button>
+    </div>
+
+    <div id="onlineJoin" class="online-group" style="display:none;">
+        <p>Enter Friend's ID:</p>
+        <input type="text" id="destIdInput" class="input-field" placeholder="Paste ID Here">
+        <button class="menu-btn" style="width:100%" onclick="connectToHost()">Connect</button>
+        <button class="btn" onclick="backToOnlineMenu()">Cancel</button>
+    </div>
+
+    <button class="menu-btn" style="margin-top:30px;" onclick="backToMenuFromOnline()">Back to Main Menu</button>
+</div>
+
+<div id="settingsMenu" style="display: none;">
+  <div class="title">Game Settings</div>
+  <div class="subtitle">Customize Your Experience</div>
+
+  <div class="setting-group">
+    <h3>Match Settings</h3>
+    <div class="setting-item">
+      <span>Rounds to Win: <span id="roundsToWinValue">1</span></span>
+      <input type="range" min="1" max="5" value="1" step="1" id="roundsToWinSlider" oninput="updateSettings('roundsToWin', this.value)">
+    </div>
+    <div class="setting-item">
+      <span>Board Size: <span id="boardSizeValue">15x15</span></span>
+      <input type="range" min="9" max="21" value="15" step="2" id="boardSizeSlider" oninput="updateSettings('boardSize', this.value)">
+    </div>
+  </div>
+
+  <div class="setting-group">
+    <h3>Game Rules</h3>
+    <div class="setting-item">
+      <span>Allow Retract (Undo)</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleRetract" checked onchange="updateSettings('retractEnabled', this.checked)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="setting-item">
+      <span>Enable Special Skills</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleSkills" checked onchange="updateSettings('skillsEnabled', this.checked)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="setting-group">
+    <h3>Sound Settings</h3>
+    <div class="setting-item">
+      <span>Background Music</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleMusicCheckbox" onchange="updateSettings('musicEnabled', this.checked)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    
+    <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+      <span>Select Music Track:</span>
+      <select id="bgmSelect" class="music-select" onchange="changeTrack(this.value)">
+          </select>
+    </div>
+  </div>
+
+  <button class="menu-btn" onclick="backToMenuFromSettings()">Back to Main Menu</button>
+</div>
+
+
+<div id="gameArea">
+  <button class="menu-btn" id="backBtn" onclick="showBackConfirmation()">← Back</button>
+
+  <div class="top-info-wrapper">
+    <div class="scoreboard">
+      <div class="score-item">
+        <div class="score-label" id="p1-label">Cyan (P1)</div>
+        <div class="score-val p1-color" id="score-p1">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">- Rounds -</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label" id="p2-label">White (P2)</div>
+        <div class="score-val p2-color" id="score-p2">0</div>
+      </div>
+    </div>
+
+    <div id="currentPlayerDisplay" class="current-turn">
+      Current Turn: <span id="currentPieceColor" class="p1-color">Cyan</span>
+    </div>
+    
+    <div id="onlineStatus" class="online-status" style="display:none;">ONLINE MODE</div>
+    <div id="skillMessage"></div> 
+  </div>
+
+  <div id="gameGrid">
+    <div id="generalControls">
+      <h3>General Controls</h3>
+      <button class="btn" onclick="toggleMusic()" id="music-btn">Music: OFF</button>
+      
+      <button class="btn" onclick="requestRetract()" id="retract-btn">Retract (悔棋)</button>
+      
+      <button class="btn" onclick="requestUndo()" id="undo-btn" style="display:none;">Debug Undo</button>
+      
+      <button class="btn" onclick="requestRestart()" id="restart-btn">Restart Round</button> 
+    </div>
+
+    <canvas id="board" width="640" height="640"></canvas>
+
+    <div id="skillControlsWrapper">
+      <div id="skillControls">
+        <h4 id="skillHeader">Special Skills</h4>
+        <div class="skill-buttons">
+          <button class="skill-btn" id="skill-teleport" onclick="requestUseSkill('teleport')">
+            Teleport (<span id="teleport-count">1</span>)
+          </button>
+          <button class="skill-btn" id="skill-double" onclick="requestUseSkill('double')">
+            Double (<span id="double-count">1</span>)
+          </button>
+          <button class="skill-btn" id="skill-remove" onclick="requestUseSkill('remove')">
+            Remove (<span id="remove-count">1</span>)
+          </button>
+          <button class="skill-btn" id="skill-cancel" onclick="cancelSkill()" disabled>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="winner-box"></div> 
+  <div id="actionEffect"></div> 
+  
+  <div id="confirmModal">
+    <div class="modal-content">
+      <h3>Confirm Return to Main Menu?</h3>
+      <p>Connection/Progress will be lost.</p>
+      <div class="modal-actions">
+        <button class="btn" onclick="confirmBack()">Confirm</button>
+        <button class="btn" onclick="cancelBack()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="alertModal">
+    <div class="modal-content">
+      <h3 id="alertTitle" style="color: #ff0000;">Warning</h3>
+      <p id="alertMessage"></p>
+      <div class="modal-actions">
+        <button class="btn" id="alertBtn" style="border-color: #ff0000; color: #ff0000;" onclick="closeAlert()">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let gameSettings = {
+    boardSize: 15,
+    musicEnabled: false,
+    retractEnabled: true, 
+    skillsEnabled: true,
+    roundsToWin: 1, 
+    currentTrackIndex: 0
+  };
+
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const scoreEl1 = document.getElementById("score-p1");
+  const scoreEl2 = document.getElementById("score-p2");
+  const winnerBox = document.getElementById("winner-box");
+  const undoBtn = document.getElementById("undo-btn");
+  const retractBtn = document.getElementById("retract-btn");
+  const musicBtn = document.getElementById("music-btn");
+  const bgm = document.getElementById("bgm");
+  const currentPlayerDisplay = document.getElementById("currentPieceColor");
+  const confirmModal = document.getElementById("confirmModal");
+  const restartBtn = document.getElementById('restart-btn'); 
+  const alertModal = document.getElementById('alertModal'); 
+  const alertTitle = document.getElementById('alertTitle'); 
+  const alertMessage = document.getElementById('alertMessage'); 
+  const alertBtn = document.getElementById('alertBtn');
+  const skillMessage = document.getElementById('skillMessage');
+  const actionEffectEl = document.getElementById('actionEffect'); 
+  const skillHeaderEl = document.getElementById('skillHeader'); 
+  
+  const teleportBtn = document.getElementById('skill-teleport');
+  const doubleBtn = document.getElementById('skill-double');
+  const removeBtn = document.getElementById('skill-remove');
+  const cancelBtn = document.getElementById('skill-cancel');
+
+  const GRID_SIZE = 40;
+  
+  let board = [];
+  let current = 1; 
+  let gameOver = false;
+  let winLine = [];
+  let moveHistory = [];
+  let preview = null; 
+  let animationId = null;
+  let particles = []; 
+  let scores = { p1: 0, p2: 0 }; 
+  
+  let player1Skills = { teleport: 1, double: 1, remove: 1 };
+  let player2Skills = { teleport: 1, double: 1, remove: 1 };
+  let gameState = 'normal'; 
+  let selectedPiece = null; 
+  let doubleMoveCount = 0; 
+
+  // === ONLINE VARIABLES ===
+  let isOnline = false;
+  let myPlayerId = 1; 
+  let peer = null;
+  let conn = null;
+
+  // === AI VARIABLES ===
+  let isAiMode = false;
+  let aiPlayer = 2; // AI is White
+
+  // === MUSIC PLAYLIST SYSTEM (Removed 4th track) ===
+  const musicPlaylist = [
+      { title: "Space Ducks (Original)", url: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/KieLoKaz/Free_Ganymed/KieLoKaz_-_01_-_Reunion_of_the_Spaceducks_Kielokaz_ID_365.mp3" },
+      { title: "Electronic (Enthusiast)", url: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Tours/Enthusiast/Tours_-_01_-_Enthusiast.mp3" },
+      { title: "Relaxing Piano (Sentinel)", url: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Kai_Engel/Satin/Kai_Engel_-_04_-_Sentinel.mp3" }
+  ];
+
+  function initMusicSystem() {
+      const select = document.getElementById('bgmSelect');
+      select.innerHTML = '';
+      musicPlaylist.forEach((track, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.text = track.title;
+          select.appendChild(option);
+      });
+      bgm.src = musicPlaylist[0].url;
+  }
+
+  function changeTrack(index) {
+      const track = musicPlaylist[index];
+      bgm.src = track.url;
+      bgm.load(); 
+      if (gameSettings.musicEnabled) {
+          bgm.play().catch(e => console.log("Play failed:", e));
+      }
+  }
+
+  function startLocalGame() {
+      isOnline = false;
+      isAiMode = false;
+      myPlayerId = 1; 
+      updatePlayerLabels("Cyan (P1)", "White (P2)");
+      startGameUI();
+  }
+
+  function startAiGame() {
+      isOnline = false;
+      isAiMode = true;
+      myPlayerId = 1; 
+      aiPlayer = 2; 
+      updatePlayerLabels("You (Cyan)", "AI (White)");
+      startGameUI();
+  }
+
+  function updatePlayerLabels(l1, l2) {
+      document.getElementById("p1-label").innerText = l1;
+      document.getElementById("p2-label").innerText = l2;
+  }
+
+  function openOnlineMenu() {
+      document.getElementById("mainMenu").style.display = "none";
+      document.getElementById("onlineMenu").style.display = "flex";
+      document.getElementById("onlineChoice").style.display = "flex";
+      document.getElementById("onlineHost").style.display = "none";
+      document.getElementById("onlineJoin").style.display = "none";
+  }
+
+  function backToMenuFromOnline() {
+      if(peer) peer.destroy();
+      document.getElementById("onlineMenu").style.display = "none";
+      document.getElementById("mainMenu").style.display = "flex";
+  }
+  
+  function backToOnlineMenu() {
+      if(peer) peer.destroy();
+      document.getElementById("onlineChoice").style.display = "flex";
+      document.getElementById("onlineHost").style.display = "none";
+      document.getElementById("onlineJoin").style.display = "none";
+  }
+
+  function setupHost() {
+      document.getElementById("onlineChoice").style.display = "none";
+      document.getElementById("onlineHost").style.display = "flex";
+      
+      peer = new Peer();
+      peer.on('open', (id) => {
+          document.getElementById("myIdDisplay").innerText = id;
+      });
+      peer.on('connection', (c) => {
+          conn = c;
+          handleConnection();
+      });
+  }
+
+  function setupJoin() {
+      document.getElementById("onlineChoice").style.display = "none";
+      document.getElementById("onlineJoin").style.display = "flex";
+      peer = new Peer();
+      peer.on('open', (id) => { console.log('My ID: ' + id); });
+  }
+
+  function connectToHost() {
+      const destId = document.getElementById("destIdInput").value;
+      if(!destId) return;
+      conn = peer.connect(destId);
+      handleConnection();
+  }
+
+  function handleConnection() {
+      conn.on('open', () => {
+          console.log("Connected!");
+          if(document.getElementById("onlineHost").style.display === "flex") {
+              myPlayerId = 1; 
+              isOnline = true;
+              isAiMode = false;
+              updatePlayerLabels("Cyan (Host)", "White (Client)");
+              conn.send({ type: 'SYNC_SETTINGS', settings: gameSettings });
+              startGameUI();
+          }
+      });
+
+      conn.on('data', (data) => {
+          handleNetworkData(data);
+      });
+
+      // === NEW: Handle Disconnection ===
+      conn.on('close', () => {
+          if (isOnline) handlePeerDisconnect();
+      });
+      conn.on('error', (err) => {
+          console.error(err);
+          if (isOnline) handlePeerDisconnect();
+      });
+  }
+
+  function handlePeerDisconnect() {
+      isOnline = false; 
+      // Show persistent alert
+      showAlert("Disconnected", "Opponent has left the game.");
+      // Override the alert OK button to force return to menu and CLEANUP
+      alertBtn.onclick = function() {
+          backToMenuAndResetScores(); // Call cleanup
+          // Reset button behavior to default for next time
+          alertBtn.onclick = closeAlert;
+      };
+  }
+
+  function handleNetworkData(data) {
+      if(data.type === 'SYNC_SETTINGS') {
+          gameSettings = data.settings;
+          myPlayerId = 2; 
+          isOnline = true;
+          isAiMode = false;
+          updatePlayerLabels("Cyan (Host)", "White (Client)");
+          startGameUI();
+      }
+      else if (data.type === 'SKILL_PREP') {
+          const color = (current === 1) ? "#0ff" : "#fff";
+          if (data.skill === 'double') {
+             gameState = 'doubleMoveFirst';
+             showActionEffect("Enemy used Double!", color);
+             updateSkillMessage("Opponent is using Double Move...");
+          } else if (data.skill === 'teleport') {
+             gameState = 'selectingPieceForTeleport';
+             showActionEffect("Enemy used Teleport!", color);
+             updateSkillMessage("Opponent is using Teleport...");
+          } else if (data.skill === 'remove') {
+             gameState = 'selectingPieceForRemove';
+             showActionEffect("Enemy used Remove!", color);
+             updateSkillMessage("Opponent is using Remove...");
+          }
+          updateSkillButtons();
+          updateRetractButton(); 
+      }
+      else if (data.type === 'SKILL_CANCEL') {
+          cancelSkill();
+      }
+      else if (data.type === 'MOVE') {
+          handleNormalMove(data.x, data.y, false);
+      }
+      else if (data.type === 'RETRACT') {
+          undoMove(false); 
+          // Received Retract from opponent. 
+          // Requirement: "特效會顯示 對手 的顏色" 
+          const oppColor = (myPlayerId === 1) ? "#fff" : "#0ff"; 
+          showActionEffect("Enemy Retracted!", oppColor);
+          updateSkillMessage("Opponent retracted their move.");
+      }
+      else if (data.type === 'SKILL_EXECUTE_TELEPORT') {
+          const {oldX, oldY, newX, newY, p} = data;
+          board[oldY][oldX] = 0;
+          board[newY][newX] = p;
+          const sk = (p === 1) ? player1Skills : player2Skills;
+          sk.teleport--;
+          moveHistory.push({x: oldX, y: oldY, newX, newY, skill: 'teleport', player: p});
+          
+          if (checkWin(newX, newY, p)) {
+             handleWin(p);
+          } else {
+             current = current === 1 ? 2 : 1;
+             cancelSkill(); 
+          }
+          drawBoard();
+          updateTurnDisplay();
+      }
+      else if (data.type === 'SKILL_EXECUTE_REMOVE') {
+          const {x, y, p} = data;
+          board[y][x] = 0;
+          const sk = (p === 1) ? player1Skills : player2Skills; 
+          sk.remove--;
+          moveHistory.push({x, y, skill: 'remove', player: p});
+          current = current === 1 ? 2 : 1;
+          cancelSkill();
+          drawBoard();
+          updateTurnDisplay();
+      }
+      else if (data.type === 'RESTART') {
+          gameSettings = data.settings; 
+          const color = (myPlayerId === 2) ? "#0ff" : "#fff"; 
+          showActionEffect("Host Restarted!", color);
+          resetGame(false);
+      }
+      else if (data.type === 'UNDO') {
+          undoMove(false);
+      }
+  }
+
+  function sendData(data) {
+      if(isOnline && conn && conn.open) {
+          conn.send(data);
+      }
+  }
+
+  function startGameUI() {
+    document.getElementById("mainMenu").style.display = "none";
+    document.getElementById("onlineMenu").style.display = "none";
+    document.getElementById("gameArea").style.display = "flex"; 
+    syncMusicPlayback(); 
+    scores = { p1: 0, p2: 0 };
+    scoreEl1.textContent = scores.p1;
+    scoreEl2.textContent = scores.p2;
+    document.getElementById("onlineStatus").style.display = isOnline ? "block" : "none";
+    document.getElementById("onlineStatus").innerText = isOnline ? 
+        (myPlayerId === 1 ? "ONLINE: HOST (Cyan)" : "ONLINE: CLIENT (White)") : "";
+    resetGame(false);
+  }
+
+  let effectTimeout;
+  function showActionEffect(text, color) {
+      actionEffectEl.innerText = text;
+      actionEffectEl.style.color = color;
+      actionEffectEl.classList.add("show");
+      
+      clearTimeout(effectTimeout);
+      effectTimeout = setTimeout(() => {
+          actionEffectEl.classList.remove("show");
+      }, 1500);
+  }
+
+  function requestRestart() {
+      if (isOnline && myPlayerId !== 1) {
+          alert("Only the Host can restart the game.");
+          return;
+      }
+      showActionEffect("Restarting...", "#0ff");
+
+      if (isOnline) sendData({type: 'RESTART', settings: gameSettings});
+      resetGame(false); 
+  }
+
+  function requestUndo() {
+      if(isOnline && current !== myPlayerId) return;
+      undoMove(true);
+  }
+
+  function requestRetract() {
+      if (!gameSettings.retractEnabled) return;
+      if (gameOver || moveHistory.length === 0) return;
+
+      const lastMove = moveHistory[moveHistory.length - 1];
+      
+      // Basic check for last move
+      if (lastMove.skill !== 'normal') {
+          return;
+      }
+      
+      // AI Check: If AI mode, also check the move BEFORE AI's move (Player's move)
+      if (isAiMode && current === 1 && moveHistory.length >= 2) {
+          const playerLastMove = moveHistory[moveHistory.length - 2];
+          if (playerLastMove.skill !== 'normal') {
+               return; // Player used skill, then AI moved. Retract disabled.
+          }
+      }
+
+      if (isOnline) {
+          if (current === myPlayerId) {
+              return;
+          }
+          sendData({type: 'RETRACT'});
+          undoMove(false); 
+          // I pressed Retract. "特效會顯示 我自己 的顏色"
+          const myColor = (myPlayerId === 1) ? "#0ff" : "#fff";
+          showActionEffect("Retract!", myColor);
+      } else if (isAiMode) {
+          if (current === 1 && moveHistory.length >= 2) {
+             undoMove(false); 
+             undoMove(false); 
+             showActionEffect("Retract!", "#0ff");
+          } else if (current === 2 && moveHistory.length >= 1) {
+             undoMove(false);
+             showActionEffect("Retract!", "#0ff");
+          }
+      } else {
+          undoMove(false);
+          // Local PvP Logic:
+          // Before undo: Current is (e.g.) White. Black just moved.
+          // After undo: Current becomes Black.
+          // Requirement: Show Black's color (The one who retracted).
+          const color = (current === 1) ? "#0ff" : "#fff";
+          showActionEffect("Retract!", color);
+      }
+  }
+
+  function requestUseSkill(skill) {
+      if (isOnline && current !== myPlayerId) return;
+      if (isAiMode && current !== 1) return; 
+      
+      const color = (current === 1) ? "#0ff" : "#fff";
+      showActionEffect(skill + "!", color);
+
+      if (isOnline) sendData({type: 'SKILL_PREP', skill: skill});
+      useSkill(skill);
+  }
+
+  function showAlert(title, message) {
+      alertTitle.textContent = title;
+      alertMessage.textContent = message;
+      alertModal.style.display = "flex";
+      canvas.style.pointerEvents = 'none'; 
+  }
+
+  function closeAlert() {
+      alertModal.style.display = "none";
+      canvas.style.pointerEvents = 'auto'; 
+  }
+
+  function syncMusicPlayback() {
+    if (gameSettings.musicEnabled) {
+        bgm.play().then(() => {
+            musicBtn.textContent = "Music: ON";
+        }).catch(e => {
+            console.log("Autoplay blocked, waiting for user interaction");
+            gameSettings.musicEnabled = false; 
+            document.getElementById('toggleMusicCheckbox').checked = false;
+            musicBtn.textContent = "Music: OFF";
+        });
+    } else {
+        bgm.pause();
+        musicBtn.textContent = "Music: OFF";
+    }
+  }
+
+  function updateTurnDisplay() {
+      if (gameOver) {
+          currentPlayerDisplay.textContent = "Round End"; 
+          currentPlayerDisplay.className = ''; 
+          skillHeaderEl.style.color = "#aaa";
+      } else {
+          if (current === 1) {
+              currentPlayerDisplay.textContent = isAiMode ? "You (Cyan)" : "Cyan";
+              currentPlayerDisplay.className = 'p1-color';
+              skillHeaderEl.innerText = isAiMode ? "Special Skills (You)" : "Special Skills (Cyan)";
+              skillHeaderEl.style.color = "#0ff";
+          } else {
+              currentPlayerDisplay.textContent = isAiMode ? "AI Thinking..." : "White";
+              currentPlayerDisplay.className = 'p2-color';
+              skillHeaderEl.innerText = isAiMode ? "Special Skills (AI)" : "Special Skills (White)";
+              skillHeaderEl.style.color = "#fff";
+          }
+      }
+      updateSkillButtons(); 
+      updateRetractButton(); 
+      updateSkillMessage(""); 
+
+      if (isAiMode && current === aiPlayer && !gameOver) {
+          setTimeout(aiMove, 500); 
+      }
+  }
+  
+  function updateSkillMessage(message = '') {
+      skillMessage.textContent = message;
+  }
+  
+  function getCurrentSkills() {
+      return current === 1 ? player1Skills : player2Skills;
+  }
+  
+  function resetSkills() {
+      player1Skills = { teleport: 1, double: 1, remove: 1 };
+      player2Skills = { teleport: 1, double: 1, remove: 1 };
+      gameState = 'normal';
+      selectedPiece = null;
+      doubleMoveCount = 0;
+      
+      const skillControlsWrapper = document.getElementById('skillControlsWrapper');
+      if (skillControlsWrapper) {
+        skillControlsWrapper.style.display = gameSettings.skillsEnabled ? 'flex' : 'none';
+      }
+      updateSkillButtons();
+      updateRetractButton();
+      updateSkillMessage();
+  }
+  
+  function updateRetractButton() {
+      if (!gameSettings.retractEnabled) {
+          retractBtn.disabled = true;
+          return;
+      }
+      if (gameOver || moveHistory.length === 0) {
+          retractBtn.disabled = true;
+          return;
+      }
+
+      // === Check if last move was a skill ===
+      const lastMove = moveHistory[moveHistory.length - 1];
+      if (lastMove.skill !== 'normal') {
+          retractBtn.disabled = true;
+          return;
+      }
+      
+      // === FIX for AI Mode: Check Player's last move (before AI) ===
+      if (isAiMode && current === 1 && moveHistory.length >= 2) {
+          const playerLastMove = moveHistory[moveHistory.length - 2];
+          if (playerLastMove.skill !== 'normal') {
+              retractBtn.disabled = true;
+              return;
+          }
+      }
+      // ======================================
+
+      if (isOnline) {
+          const lastPlayer = current === 1 ? 2 : 1; 
+          if (current !== myPlayerId && lastPlayer === myPlayerId) {
+              retractBtn.disabled = false; 
+          } else {
+              retractBtn.disabled = true; 
+          }
+      } else if (isAiMode) {
+           retractBtn.disabled = (moveHistory.length < 2);
+      } else {
+          retractBtn.disabled = false;
+      }
+  }
+
+  function updateSkillButtons() {
+      const skills = getCurrentSkills();
+      const canAct = (!isOnline || current === myPlayerId) && (!isAiMode || current === 1);
+
+      teleportBtn.disabled = !canAct || gameOver || skills.teleport === 0 || gameState !== 'normal';
+      doubleBtn.disabled = !canAct || gameOver || skills.double === 0 || gameState !== 'normal';
+      removeBtn.disabled = !canAct || gameOver || skills.remove === 0 || gameState !== 'normal';
+      
+      document.getElementById('teleport-count').textContent = skills.teleport;
+      document.getElementById('double-count').textContent = skills.double;
+      document.getElementById('remove-count').textContent = skills.remove;
+      
+      cancelBtn.disabled = !canAct || gameState === 'normal' || gameOver;
+      
+      [teleportBtn, doubleBtn, removeBtn].forEach(btn => btn.classList.remove('active'));
+      if (gameState.includes('teleport')) teleportBtn.classList.add('active');
+      else if (gameState.includes('remove')) removeBtn.classList.add('active');
+      else if (gameState.includes('double')) doubleBtn.classList.add('active');
+  }
+  
+  function useSkill(skillType) {
+      if (gameOver) return;
+      if (isAiMode && current === aiPlayer) return; 
+
+      if (gameState !== 'normal') {
+          if (gameState.includes(skillType)) { 
+             if(isOnline) sendData({type: 'SKILL_CANCEL'});
+             cancelSkill(); 
+             return; 
+          }
+          if(isOnline) sendData({type: 'SKILL_CANCEL'});
+          cancelSkill();
+      }
+      const skills = getCurrentSkills();
+      if (skills[skillType] === 0) return;
+
+      switch(skillType) {
+          case 'teleport':
+              gameState = 'selectingPieceForTeleport';
+              updateSkillMessage("Teleport Active: Click on the piece you want to move.");
+              break;
+          case 'double':
+              gameState = 'doubleMoveFirst';
+              updateSkillMessage("Double Move Active: Place the first piece.");
+              break;
+          case 'remove':
+              gameState = 'selectingPieceForRemove';
+              updateSkillMessage("Remove Active: Click on an opponent's piece.");
+              break;
+      }
+      updateSkillButtons();
+  }
+  
+  function cancelSkill() {
+      if (gameState === 'doubleMoveSecond' && doubleMoveCount === 1) {
+          const lastMoveIndex = moveHistory.length - 1;
+          const lastMove = moveHistory[lastMoveIndex];
+          if (lastMove && lastMove.skill === 'double_move_1') {
+              board[lastMove.y][lastMove.x] = 0;
+              moveHistory.pop();
+              drawBoard(); 
+          } 
+      }
+      if (gameState.includes('teleport')) selectedPiece = null;
+      gameState = 'normal';
+      doubleMoveCount = 0;
+      updateSkillButtons();
+      updateSkillMessage();
+      drawBoard();
+  }
+
+  function showBackConfirmation() { confirmModal.style.display = "flex"; }
+  function cancelBack() { confirmModal.style.display = "none"; }
+
+  function backToMenuAndResetScores() {
+      // 1. Clear flag immediately to prevent async callbacks from triggering "Disconnect" alerts
+      isOnline = false;
+
+      // 2. Destroy Network Objects
+      if(conn) {
+          conn.close();
+          conn = null;
+      }
+      if(peer) {
+          peer.destroy();
+          peer = null;
+      }
+
+      // 3. Clear UI Overlays
+      closeAlert();
+      cancelBack();
+      document.getElementById("onlineStatus").style.display = "none"; // Force hide
+
+      // 4. Reset Game State
+      scores = { p1: 0, p2: 0 };
+      scoreEl1.textContent = scores.p1;
+      scoreEl2.textContent = scores.p2;
+      resetGame(false);
+
+      // 5. Navigate
+      document.getElementById("gameArea").style.display = "none";
+      document.getElementById("mainMenu").style.display = "flex";
+  }
+  
+  function confirmBack() {
+      confirmModal.style.display = "none";
+      backToMenuAndResetScores(); 
+  }
+
+  function settings() {
+    document.getElementById("mainMenu").style.display = "none";
+    document.getElementById("settingsMenu").style.display = "flex";
+    document.getElementById('boardSizeValue').textContent = `${gameSettings.boardSize}x${gameSettings.boardSize}`;
+    document.getElementById('boardSizeSlider').value = gameSettings.boardSize;
+    document.getElementById('toggleMusicCheckbox').checked = gameSettings.musicEnabled;
+    document.getElementById('toggleRetract').checked = gameSettings.retractEnabled;
+    document.getElementById('toggleSkills').checked = gameSettings.skillsEnabled;
+    document.getElementById('roundsToWinValue').textContent = gameSettings.roundsToWin;
+    document.getElementById('roundsToWinSlider').value = gameSettings.roundsToWin;
+    
+    initMusicSystem();
+  }
+
+  function backToMenuFromSettings() {
+    document.getElementById("settingsMenu").style.display = "none";
+    document.getElementById("mainMenu").style.display = "flex";
+  }
+
+  function updateSettings(key, value) {
+      if (key === 'boardSize') {
+          value = parseInt(value);
+          gameSettings.boardSize = value;
+          document.getElementById('boardSizeValue').textContent = `${value}x${value}`;
+      } else if (key === 'roundsToWin') {
+          value = parseInt(value);
+          gameSettings.roundsToWin = value;
+          document.getElementById('roundsToWinValue').textContent = value;
+      } else if (key === 'musicEnabled') {
+          gameSettings.musicEnabled = value;
+          syncMusicPlayback(); 
+      } else {
+          gameSettings[key] = value;
+      }
+      if (isOnline && conn && myPlayerId === 1) {
+          conn.send({type:'SYNC_SETTINGS', settings: gameSettings});
+      }
+  }
+
+  function toggleMusic() {
+    gameSettings.musicEnabled = !gameSettings.musicEnabled;
+    document.getElementById('toggleMusicCheckbox').checked = gameSettings.musicEnabled;
+    syncMusicPlayback();
+  }
+
+  initArray();
+  drawBoard();
+  initMusicSystem();
+
+  function initArray() {
+    const BOARD_LEN = gameSettings.boardSize;
+    canvas.width = (BOARD_LEN + 1) * GRID_SIZE;
+    canvas.height = (BOARD_LEN + 1) * GRID_SIZE;
+    board = Array.from({ length: BOARD_LEN }, () => Array(BOARD_LEN).fill(0));
+  }
+
+  function resetGame(shouldBroadcast = true) {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+    initArray(); 
+    current = 1;
+    gameOver = false;
+    winLine = [];
+    preview = null;
+    moveHistory = [];
+    particles = [];
+    winnerBox.style.display = "none";
+    undoBtn.disabled = false;
+    
+    restartBtn.textContent = "Restart Round";
+    restartBtn.disabled = false;
+    
+    resetSkills();
+    drawBoard();
+    updateTurnDisplay();
+  }
+
+  function undoMove(shouldBroadcast = true) {
+    if (gameOver || moveHistory.length === 0 || gameState !== 'normal') return;
+    
+    const lastMove = moveHistory.pop();
+    board[lastMove.y][lastMove.x] = 0;
+    
+    if (lastMove.skill === 'double_move_2') {
+        const firstMove = moveHistory.pop();
+        board[firstMove.y][firstMove.x] = 0;
+        const lastPlayerSkills = current === 1 ? player2Skills : player1Skills;
+        lastPlayerSkills.double = 1;
+    } else if (lastMove.skill === 'teleport' || lastMove.skill === 'remove') {
+        current = current === 1 ? 2 : 1;
+        if (lastMove.skill === 'teleport') {
+            const piecePlayer = current === 1 ? 2 : 1; 
+            board[lastMove.newY][lastMove.newX] = 0; 
+            board[lastMove.y][lastMove.x] = piecePlayer; 
+            getCurrentSkills().teleport = 1;
+        }
+        if (lastMove.skill === 'remove') {
+            const removerSkills = current === 1 ? player2Skills : player1Skills;
+            removerSkills.remove = 1;
+        }
+    } else {
+        current = current === 1 ? 2 : 1;
+    }
+    
+    selectedPiece = null;
+    drawBoard();
+    updateTurnDisplay();
+    
+    if(isOnline && shouldBroadcast) sendData({type: 'UNDO'});
+  }
+
+  function aiMove() {
+      if (gameOver || current !== aiPlayer) return;
+
+      const size = gameSettings.boardSize;
+      let bestScore = -Infinity;
+      let move = null;
+
+      if (moveHistory.length === 0) {
+          move = { x: Math.floor(size/2), y: Math.floor(size/2) };
+      } else {
+          for (let y = 0; y < size; y++) {
+              for (let x = 0; x < size; x++) {
+                  if (board[y][x] === 0) {
+                      let attackScore = evaluatePos(x, y, aiPlayer);
+                      let defenseScore = evaluatePos(x, y, aiPlayer === 1 ? 2 : 1);
+
+                      let totalScore = attackScore + defenseScore;
+                      if (attackScore >= 10000) totalScore += 10000; 
+                      if (defenseScore >= 10000) totalScore += 5000; 
+
+                      if (totalScore > bestScore) {
+                          bestScore = totalScore;
+                          move = { x, y };
+                      } else if (totalScore === bestScore) {
+                          if (Math.random() > 0.5) move = { x, y };
+                      }
+                  }
+              }
+          }
+      }
+
+      if (move) {
+          handleNormalMove(move.x, move.y);
+      }
+  }
+
+  function evaluatePos(x, y, player) {
+      let score = 0;
+      const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+      
+      for (let d of dirs) {
+          let lineStr = getLineString(x, y, d[0], d[1], player);
+          score += getPatternScore(lineStr);
+      }
+      return score;
+  }
+
+  function getLineString(x, y, dx, dy, player) {
+      const size = gameSettings.boardSize;
+      let str = "";
+      for (let k = -4; k <= 4; k++) {
+          if (k === 0) {
+              str += "X"; 
+              continue;
+          }
+          const nx = x + dx * k;
+          const ny = y + dy * k;
+          
+          if (nx < 0 || nx >= size || ny < 0 || ny >= size) {
+              str += "2"; 
+          } else if (board[ny][nx] === player) {
+              str += "1"; 
+          } else if (board[ny][nx] === 0) {
+              str += "0"; 
+          } else {
+              str += "2"; 
+          }
+      }
+      return str;
+  }
+
+  function getPatternScore(str) {
+      if (str.includes("1111X") || str.includes("111X1") || str.includes("11X11") || str.includes("1X111") || str.includes("X1111")) return 100000;
+      if (str.includes("0111X0") || str.includes("011X10") || str.includes("01X110") || str.includes("0X1110")) return 10000;
+      if (str.includes("1111X") || str.includes("X1111") || str.includes("111X1") || str.includes("11X11")) return 2500;
+      if (str.includes("011X0") || str.includes("01X10") || str.includes("0X110")) return 3000;
+      if (str.includes("2111X0") || str.includes("0X1112")) return 500;
+      if (str.includes("001X0") || str.includes("01X00") || str.includes("0X100")) return 200;
+      return 10;
+  }
+
+
+  function drawBoard() {
+    const BOARD_LEN = gameSettings.boardSize; 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(0,255,255,0.55)";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#0ff";
+
+    for (let i = 0; i < BOARD_LEN; i++) {
+      ctx.beginPath();
+      ctx.moveTo(GRID_SIZE, GRID_SIZE + i * GRID_SIZE);
+      ctx.lineTo(GRID_SIZE * BOARD_LEN, GRID_SIZE + i * GRID_SIZE);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(GRID_SIZE + i * GRID_SIZE, GRID_SIZE);
+      ctx.lineTo(GRID_SIZE + i * GRID_SIZE, GRID_SIZE * BOARD_LEN);
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+
+    for (let y = 0; y < BOARD_LEN; y++) {
+      for (let x = 0; x < BOARD_LEN; x++) {
+        if (board[y][x] !== 0) {
+          drawPiece(x, y, board[y][x]); 
+        }
+      }
+    }
+    
+    if (gameState === 'selectingPieceForTeleport' && selectedPiece) {
+        drawPiece(selectedPiece.x, selectedPiece.y, board[selectedPiece.y][selectedPiece.x], 40);
+    }
+
+    if (preview && !gameOver && board[preview.y][preview.x] === 0) {
+      drawPreviewPiece(preview.x, preview.y);
+    }
+  }
+
+  function drawPiece(x, y, player, blurOverride = null) {
+    const cx = GRID_SIZE + x * GRID_SIZE;
+    const cy = GRID_SIZE + y * GRID_SIZE;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    if (player === 1) {
+      ctx.fillStyle = "#0ff";
+      ctx.shadowColor = "#0ff";
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "#88ffff";
+    }
+    ctx.shadowBlur = blurOverride !== null ? blurOverride : 25;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawPreviewPiece(x, y) {
+    const cx = GRID_SIZE + x * GRID_SIZE;
+    const cy = GRID_SIZE + y * GRID_SIZE;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    if (gameState === 'selectingNewSpotForTeleport' && selectedPiece) {
+        ctx.fillStyle = board[selectedPiece.y][selectedPiece.x] === 1 ? "rgba(0,255,255,0.5)" : "rgba(255,255,255,0.5)";
+    } else {
+        ctx.fillStyle = current === 1 ? "rgba(0,255,255,0.3)" : "rgba(255,255,255,0.3)";
+    }
+    ctx.fill();
+  }
+
+  class Particle {
+    constructor(x, y, color) {
+      this.x = x; this.y = y;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 3 + 1;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.life = 1.0;
+      this.decay = Math.random() * 0.02 + 0.01;
+      this.color = color;
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      this.life -= this.decay;
+    }
+    draw(ctx) {
+      ctx.globalAlpha = this.life;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  function createExplosion() {
+    winLine.forEach(pt => {
+      const cx = GRID_SIZE + pt.x * GRID_SIZE;
+      const cy = GRID_SIZE + pt.y * GRID_SIZE;
+      const winner = current === 1 ? 2 : 1; 
+      const color = winner === 1 ? "#0ff" : "#fff"; 
+      for (let i = 0; i < 20; i++) particles.push(new Particle(cx, cy, color));
+    });
+  }
+
+  function animateVictory() {
+    const time = Date.now();
+    const pulse = (Math.sin(time * 0.005) + 1) / 2; 
+    const glowSize = 8 + (pulse * 27); 
+    drawBoard();
+    if (winLine.length > 1) { 
+        winLine.forEach(pt => {
+            drawPiece(pt.x, pt.y, board[pt.y][pt.x], glowSize);
+        });
+    }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.update();
+      p.draw(ctx);
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    animationId = requestAnimationFrame(animateVictory);
+  }
+
+  function inside(x, y) {
+    const BOARD_LEN = gameSettings.boardSize;
+    return x >= 0 && x < BOARD_LEN && y >= 0 && y < BOARD_LEN;
+  }
+
+  function checkLineStatus(x, y, p, dx, dy) {
+    const BOARD_LEN = gameSettings.boardSize;
+    let count = 1;
+    let line = [{ x, y }];
+    let i = 1;
+    while (inside(x + dx * i, y + dy * i) && board[y + dy * i][x + dx * i] === p) {
+      line.push({ x: x + dx * i, y: y + dy * i });
+      count++; i++;
+    }
+    i = 1;
+    while (inside(x - dx * i, y - dy * i) && board[y - dy * i][x - dx * i] === p) {
+      line.unshift({ x: x - dx * i, y: y - dy * i });
+      count++; i++;
+    }
+    return { count, line };
+  }
+
+  function checkWin(x, y, p) {
+    const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+    for (let [dx, dy] of dirs) {
+      const { count, line } = checkLineStatus(x, y, p, dx, dy);
+      if (count === 5) {
+        winLine = line;
+        return true;
+      }
+      if (count > 5) {
+          winLine = line.slice(0, 5); 
+          return true;
+      }
+    }
+    return false;
+  }
+  
+  function handleNormalMove(x, y, shouldBroadcast = true) {
+      board[y][x] = current;
+
+      if (checkWin(x, y, current)) {
+        if (isOnline && shouldBroadcast) sendData({type: 'MOVE', x, y});
+        handleWin(current); 
+        return;
+      }
+      
+      const moveData = {x, y, skill: gameState === 'doubleMoveFirst' ? 'double_move_1' : (doubleMoveCount === 1 ? 'double_move_2' : 'normal'), player: current};
+      moveHistory.push(moveData);
+      
+      if (isOnline && shouldBroadcast) {
+          sendData({type: 'MOVE', x, y});
+      }
+
+      if (gameState === 'doubleMoveFirst') {
+          gameState = 'doubleMoveSecond';
+          doubleMoveCount = 1;
+          updateSkillMessage("Double Move in progress: Place the second piece.");
+      } else if (gameState === 'doubleMoveSecond') {
+          getCurrentSkills().double--;
+          cancelSkill(); 
+          current = current === 1 ? 2 : 1;
+      } else {
+          current = current === 1 ? 2 : 1;
+      }
+      
+      drawBoard();
+      updateTurnDisplay(); 
+  }
+
+  /* === NEW: Coordinate Helper for Scaling === */
+  function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = Math.round(((evt.clientX - rect.left) * scaleX - GRID_SIZE) / GRID_SIZE);
+      const y = Math.round(((evt.clientY - rect.top) * scaleY - GRID_SIZE) / GRID_SIZE);
+      return { x, y };
+  }
+
+  /* === 事件監聽 (Updated for Scaling) === */
+  canvas.addEventListener("mousemove", (e) => {
+    if (gameOver) return;
+    const { x, y } = getMousePos(canvas, e);
+    
+    if ((isOnline && current !== myPlayerId) || (isAiMode && current === aiPlayer)) {
+        preview = null;
+        drawBoard();
+        return;
+    }
+
+    if (gameState !== 'normal' && !gameState.includes('doubleMove')) {
+        preview = null;
+    } else {
+        preview = inside(x, y) ? { x, y } : null;
+    }
+    drawBoard();
+  });
+
+  canvas.addEventListener("click", (e) => {
+    if (gameOver) return;
+    if (isOnline && current !== myPlayerId) { return; }
+    if (isAiMode && current === aiPlayer) { return; } 
+
+    const { x, y } = getMousePos(canvas, e);
+
+    if (!inside(x, y)) return;
+    
+    if (gameState !== 'normal') {
+        const p = board[y][x];
+        const skills = getCurrentSkills();
+        
+        if (gameState === 'selectingPieceForRemove') {
+            if (p === 0 || p === current) {
+                updateSkillMessage("Remove failed: Select an opponent's piece!");
+            } else {
+                board[y][x] = 0;
+                skills.remove--;
+                moveHistory.push({x, y, skill: 'remove', player: current});
+                if(isOnline) sendData({type: 'SKILL_EXECUTE_REMOVE', x, y, p: current}); 
+                current = current === 1 ? 2 : 1; 
+                cancelSkill();
+            }
+            drawBoard();
+            updateTurnDisplay();
+            return;
+        }
+
+        if (gameState === 'selectingPieceForTeleport') {
+            if (p === current) {
+                selectedPiece = { x, y };
+                gameState = 'selectingNewSpotForTeleport';
+                updateSkillMessage("Teleport Active: Click on the new empty spot.");
+            } else {
+                updateSkillMessage("Teleport failed: Select your own piece!");
+            }
+            drawBoard();
+            return;
+        }
+
+        if (gameState === 'selectingNewSpotForTeleport') {
+            if (p === 0) {
+                const oldX = selectedPiece.x;
+                const oldY = selectedPiece.y;
+                const piecePlayer = board[oldY][oldX];
+                
+                board[oldY][oldX] = 0; 
+                board[y][x] = piecePlayer; 
+
+                skills.teleport--;
+                moveHistory.push({x: oldX, y: oldY, newX: x, newY: y, skill: 'teleport', player: piecePlayer}); 
+                
+                if(isOnline) sendData({type: 'SKILL_EXECUTE_TELEPORT', oldX, oldY, newX: x, newY: y, p: piecePlayer});
+
+                if (checkWin(x, y, piecePlayer)) {
+                    handleWin(piecePlayer);
+                    return;
+                }
+                current = current === 1 ? 2 : 1; 
+                cancelSkill();
+            } else {
+                updateSkillMessage("Teleport failed: Must be empty!");
+            }
+            drawBoard();
+            updateTurnDisplay();
+            return;
+        }
+        
+        if (gameState.includes('doubleMove')) {
+            if (p !== 0) return;
+            handleNormalMove(x, y); 
+            return;
+        }
+    }
+
+    if (board[y][x] !== 0) return;
+    handleNormalMove(x, y);
+  });
+  
+  function handleSetWin(winner) {
+    const text = winner === 1 ? "Cyan Wins!" : (isAiMode ? "AI Wins!" : "White Wins!");
+    winnerBox.textContent = text;
+    winnerBox.style.fontSize = "40px"; 
+    winnerBox.style.display = "block";
+    gameOver = true;
+    undoBtn.disabled = true;
+    restartBtn.disabled = true;
+    updateTurnDisplay(); 
+    createExplosion();
+    animateVictory();
+    if (!isOnline) setTimeout(backToMenuAndResetScores, 5000); 
+  }
+
+  function handleWin(winner) {
+    gameOver = true;
+    undoBtn.disabled = true;
+    
+    if (winner === 1) scores.p1++; else scores.p2++;
+    scoreEl1.textContent = scores.p1;
+    scoreEl2.textContent = scores.p2;
+
+    if (scores.p1 >= gameSettings.roundsToWin || scores.p2 >= gameSettings.roundsToWin) {
+        handleSetWin(winner);
+        return; 
+    }
+    
+    if (winLine.length > 1) { 
+        createExplosion();
+        animateVictory();
+    } else {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+    }
+    
+    const text = winner === 1 ? "Cyan Wins Round!" : (isAiMode ? "AI Wins Round!" : "White Wins Round!");
+    winnerBox.textContent = text;
+    winnerBox.style.display = "block";
+    winnerBox.style.fontSize = "32px"; 
+    restartBtn.textContent = "Next Round"; 
+    updateTurnDisplay(); 
+  }
+</script>
+</body>
+</html>
